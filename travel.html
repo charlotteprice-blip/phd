@@ -160,7 +160,7 @@
   /* Map spots */
   .spots{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-4)}
 
-  /* Playlist shell */
+  /* Embed shell (weather widgets) */
   .media-shell{border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface);box-shadow:var(--shadow-sm)}
   .media-shell .ph{padding:var(--space-6) var(--space-5);text-align:center;color:var(--ink-muted)}
   .media-shell .ph .big{font-family:var(--font-heading);font-size:18px;font-weight:600;color:var(--ink);margin-bottom:6px}
@@ -239,7 +239,6 @@
       <a class="nav-link is-active" href="#photos">Photos</a>
       <a class="nav-link" href="#journey">Journey</a>
       <a class="nav-link" href="#map">Map</a>
-      <a class="nav-link" href="#playlist">Playlist</a>
     </div>
   </div>
 </div>
@@ -362,15 +361,6 @@
     </div>
   </section>
 
-  <!-- ============ SOUNDTRACK ============ -->
-  <section class="block" id="playlist">
-    <div class="block-label">The soundtrack</div>
-    <h2>What I'm listening to</h2>
-    <div class="media-shell" id="spotifyHolder">
-      <div id="spotify-embed"></div>
-    </div>
-  </section>
-
   <!-- ============ SUGGESTIONS ============ -->
   <section class="block" id="suggest">
     <div class="block-label">Over to you</div>
@@ -419,7 +409,6 @@ const SITE_PASSWORD = "cheesesteak";   // ← change this to your chosen passwor
     gate.style.display = 'none';
     document.body.classList.remove('locked');
     try{ sessionStorage.setItem('aom_ok','1'); }catch(e){}
-    try{ if(window.startTripMusic) window.startTripMusic(); }catch(e){}
   }
   try{ if(sessionStorage.getItem('aom_ok') === '1'){ unlock(); } }catch(e){}
   form.addEventListener('submit', function(e){
@@ -443,11 +432,6 @@ const ALBUM_URL = "https://www.icloud.com/sharedalbum/#B2H5n8hH4JKIq6a";   // �
    provided), then paste its address below, e.g. https://aom-photos.<you>.workers.dev
    Leave blank and the carousel will show its "could not load" message. */
 const PHOTO_PROXY = "";   // ← paste your Cloudflare Worker URL here
-
-/* ============================================================
-   TRIP SOUNDTRACK — embeds a Spotify playlist player
-   ============================================================ */
-const SPOTIFY_URL = "https://open.spotify.com/playlist/1NImvBeazp21WhtmWMGdNN";   // ← your Spotify travel playlist
 
 const AUTO_MS = 5000;   // time each photo is shown (ms)
 
@@ -600,31 +584,6 @@ function updateCount(){
   countline.innerHTML = '<b>' + slides.length + '</b> photo' + (slides.length===1?'':'s') + ' shared so far';
 }
 
-/* ---- Spotify player + music on unlock ----
-   Uses Spotify's iFrame API so the playlist can start the moment the
-   visitor enters the password (browsers require that first interaction
-   before any sound). Visitors not signed in to Spotify hear 30-second
-   previews; signed-in visitors hear full tracks. */
-function extractSpotifyId(url){
-  if(!url) return null;
-  const m = url.match(/playlist[\/:]([a-zA-Z0-9]+)/);
-  return m ? m[1] : null;
-}
-let _spotCtrl = null, _wantPlay = false;
-window.startTripMusic = function(){
-  _wantPlay = true;
-  if(_spotCtrl){ try{ _spotCtrl.play(); }catch(e){} }
-};
-window.onSpotifyIframeApiReady = function(IFrameAPI){
-  const el = document.getElementById('spotify-embed');
-  const id = extractSpotifyId(SPOTIFY_URL);
-  if(!el || !id) return;
-  IFrameAPI.createController(el, {uri:'spotify:playlist:'+id, width:'100%', height:352}, function(controller){
-    _spotCtrl = controller;
-    if(_wantPlay){ try{ controller.play(); }catch(e){} }
-  });
-};
-
 /* ============================================================
    SUGGESTION BOX — collects suggestions and sends them to you
    ------------------------------------------------------------
@@ -720,6 +679,5 @@ const SUGGEST_TO = "charlottejeanprice@gmail.com";
 
 loadAlbum();
 </script>
-<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 </body>
 </html>
