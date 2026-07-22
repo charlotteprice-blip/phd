@@ -90,7 +90,7 @@
   .eyebrow{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:var(--space-3)}
   .intro h1{font-size:32px;line-height:1.18;font-weight:700}
   @media(min-width:768px){.intro h1{font-size:40px}}
-  .intro p{max-width:640px;color:var(--ink-secondary);margin:var(--space-3) 0 0}
+  .intro p{max-width:none;color:var(--ink-secondary);margin:var(--space-3) 0 0}
   .fallback-note{margin-top:var(--space-4);display:inline-block;background:var(--highlight);color:var(--ink);
     border-radius:var(--radius-pill);padding:4px 12px;font-size:13px;font-weight:500}
   .badge-row{display:flex;flex-wrap:wrap;gap:var(--space-3);margin-top:var(--space-4)}
@@ -102,7 +102,7 @@
   section.block{padding:var(--space-6) 0;border-top:1px solid var(--border)}
   .block-label{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:var(--space-4)}
   .block h2{font-size:24px;font-weight:600;margin-bottom:var(--space-5)}
-  .block .lead{max-width:640px;color:var(--ink-secondary);margin:calc(var(--space-5) * -1 + var(--space-2)) 0 var(--space-5)}
+  .block .lead{max-width:none;color:var(--ink-secondary);margin:calc(var(--space-5) * -1 + var(--space-2)) 0 var(--space-5)}
   .note{background:var(--surface-alt);border:1px solid var(--border);border-radius:var(--radius-md);
     padding:var(--space-3) var(--space-4);font-size:14px;color:var(--ink-secondary)}
 
@@ -318,6 +318,20 @@
     </div>
   </section>
 
+  <!-- ============ WEATHER ============ -->
+  <section class="block" id="weather">
+    <div class="block-label">Right now</div>
+    <h2>Weather where I am</h2>
+    <div class="card-grid">
+      <div class="media-shell" style="padding:0">
+        <iframe src="https://indify.co/widgets/live/weather/ViDaPjtUgXzsU85rSg8p" title="Live weather" style="width:100%;height:200px;border:0;display:block" loading="lazy"></iframe>
+      </div>
+      <div class="media-shell" style="padding:0">
+        <iframe src="https://indify.co/widgets/live/weather/2QkXlfGS2dabOdDyQLzx" title="Live weather" style="width:100%;height:200px;border:0;display:block" loading="lazy"></iframe>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ HIGHLIGHT ============ -->
   <section class="block" id="talk">
     <div class="block-label">The big moment</div>
@@ -353,10 +367,7 @@
     <div class="block-label">The soundtrack</div>
     <h2>What I'm listening to</h2>
     <div class="media-shell" id="spotifyHolder">
-      <div class="ph" id="spotifyPlaceholder">
-        <div class="big">Playlist coming soon</div>
-        <div>The travel playlist will appear here shortly.</div>
-      </div>
+      <div id="spotify-embed"></div>
     </div>
   </section>
 
@@ -408,6 +419,7 @@ const SITE_PASSWORD = "cheesesteak";   // ← change this to your chosen passwor
     gate.style.display = 'none';
     document.body.classList.remove('locked');
     try{ sessionStorage.setItem('aom_ok','1'); }catch(e){}
+    try{ if(window.startTripMusic) window.startTripMusic(); }catch(e){}
   }
   try{ if(sessionStorage.getItem('aom_ok') === '1'){ unlock(); } }catch(e){}
   form.addEventListener('submit', function(e){
@@ -426,6 +438,11 @@ const SITE_PASSWORD = "cheesesteak";   // ← change this to your chosen passwor
      "Public Website" ▸ Share Link ▸ Copy.
    ============================================================ */
 const ALBUM_URL = "https://www.icloud.com/sharedalbum/#B2H5n8hH4JKIq6a";   // ← your iCloud shared album
+/* ▶ PHOTO RELAY: Apple blocks the browser from reading the album directly, so
+   the carousel needs a small free relay. Deploy the Cloudflare Worker (steps
+   provided), then paste its address below, e.g. https://aom-photos.<you>.workers.dev
+   Leave blank and the carousel will show its "could not load" message. */
+const PHOTO_PROXY = "";   // ← paste your Cloudflare Worker URL here
 
 /* ============================================================
    TRIP SOUNDTRACK — embeds a Spotify playlist player
@@ -451,7 +468,8 @@ function extractToken(url){
 }
 
 async function apiPost(host, token, endpoint, body){
-  const res = await fetch(`https://${host}/${token}/sharedstreams/${endpoint}`, {
+  const base = PHOTO_PROXY ? PHOTO_PROXY.replace(/\/+$/,'') + '/' + host : 'https://' + host;
+  const res = await fetch(`${base}/${token}/sharedstreams/${endpoint}`, {
     method:'POST',
     headers:{'Content-Type':'text/plain'},
     body:JSON.stringify(body)
@@ -582,27 +600,30 @@ function updateCount(){
   countline.innerHTML = '<b>' + slides.length + '</b> photo' + (slides.length===1?'':'s') + ' shared so far';
 }
 
-/* ---- Spotify embed ---- */
+/* ---- Spotify player + music on unlock ----
+   Uses Spotify's iFrame API so the playlist can start the moment the
+   visitor enters the password (browsers require that first interaction
+   before any sound). Visitors not signed in to Spotify hear 30-second
+   previews; signed-in visitors hear full tracks. */
 function extractSpotifyId(url){
   if(!url) return null;
   const m = url.match(/playlist[\/:]([a-zA-Z0-9]+)/);
   return m ? m[1] : null;
 }
-function loadSpotify(){
+let _spotCtrl = null, _wantPlay = false;
+window.startTripMusic = function(){
+  _wantPlay = true;
+  if(_spotCtrl){ try{ _spotCtrl.play(); }catch(e){} }
+};
+window.onSpotifyIframeApiReady = function(IFrameAPI){
+  const el = document.getElementById('spotify-embed');
   const id = extractSpotifyId(SPOTIFY_URL);
-  const holder = document.getElementById('spotifyHolder');
-  if(!id) return;
-  const iframe = document.createElement('iframe');
-  iframe.src = 'https://open.spotify.com/embed/playlist/' + id + '?utm_source=generator';
-  iframe.width = '100%';
-  iframe.height = '352';
-  iframe.style.border = '0';
-  iframe.setAttribute('frameborder','0');
-  iframe.setAttribute('allow','autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture');
-  iframe.setAttribute('loading','lazy');
-  holder.innerHTML = '';
-  holder.appendChild(iframe);
-}
+  if(!el || !id) return;
+  IFrameAPI.createController(el, {uri:'spotify:playlist:'+id, width:'100%', height:352}, function(controller){
+    _spotCtrl = controller;
+    if(_wantPlay){ try{ controller.play(); }catch(e){} }
+  });
+};
 
 /* ============================================================
    SUGGESTION BOX — collects suggestions and sends them to you
@@ -698,7 +719,7 @@ const SUGGEST_TO = "charlottejeanprice@gmail.com";
 })();
 
 loadAlbum();
-loadSpotify();
 </script>
+<script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
 </body>
 </html>
