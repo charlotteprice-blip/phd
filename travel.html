@@ -70,6 +70,7 @@
   }
   h1,h2,h3,h4{font-family:var(--font-heading);color:var(--ink);margin:0}
   a{color:var(--ink)}
+  img,iframe{max-width:100%}
   *:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
 
   .wrap{max-width:var(--container-app);margin:0 auto;padding:0 var(--space-4)}
@@ -207,6 +208,16 @@
   footer .name{font-family:var(--font-heading);font-weight:700;color:var(--ink);font-size:16px;margin-bottom:var(--space-1)}
 
   @media(max-width:640px){
+    section.block{padding:var(--space-5) 0}
+    .intro{padding:var(--space-6) 0 var(--space-5)}
+    .intro h1{font-size:28px}
+    .block h2{font-size:20px}
+    .block{margin-bottom:0}
+    .feature{padding:var(--space-4)}
+    .feature .meta{gap:var(--space-2)}
+    .card{padding:var(--space-4)}
+    .spots{flex-direction:column;align-items:flex-start}
+    .spots .btn{width:100%}
     .route{flex-direction:column}
     .stop{display:flex;align-items:center;gap:var(--space-4);text-align:left;min-width:0}
     .stop .node{margin:0}
@@ -431,7 +442,8 @@ const ALBUM_URL = "https://www.icloud.com/sharedalbum/#B2H5n8hH4JKIq6a";   // �
    the carousel needs a small free relay. Deploy the Cloudflare Worker (steps
    provided), then paste its address below, e.g. https://aom-photos.<you>.workers.dev
    Leave blank and the carousel will show its "could not load" message. */
-const PHOTO_PROXY = "https://aom-photos.cold-math-ed8c.workers.dev";   // ← paste your Cloudflare Worker URL here
+const PHOTO_PROXY = "https://aom-photos.cold-math-ed8c.workers.dev";   // ← your Cloudflare Worker URL
+
 const AUTO_MS = 5000;   // time each photo is shown (ms)
 
 const stage = document.getElementById('stage');
